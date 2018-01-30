@@ -11,7 +11,8 @@ from scipy.stats.stats import pearsonr
 import os
 import random
 
-os.chdir('')
+os.chdir('/Users/mariussomveille/Desktop/mecha_cluster/PythonModel')
+#os.chdir('/data/zool-avian-social-ecology/zool2068/PythonModel')
 
 #Observed presences-absences of species
 PresAbs_BR_NH_WH = np.loadtxt('PresAbs_BR_NH_WH.csv', skiprows=1, usecols=range(0,468), delimiter=',')
@@ -62,6 +63,19 @@ def haversine(lon1, lat1, lon2, lat2):
    return km
 
 T = 2000  ## threshold for ground distance
+#distance_matrix_WH = np.zeros(shape=(len(lonWH),len(lonWH)))
+#for i in range(0,len(lonWH)):
+#   for j in range(0,len(lonWH)):
+#       distance_matrix_WH[i,j] = haversine(lonWH[i], latWH[i], lonWH[j], latWH[j])
+#       if distance_matrix_WH[i,j] > T:
+#           distance_matrix_WH[i,j] = T
+
+#distance_matrix_EH = np.zeros(shape=(len(lonEH),len(lonEH)))
+#for i in range(0,len(lonEH)):
+#   for j in range(0,len(lonEH)):
+#       distance_matrix_EH[i,j] = haversine(lonEH[i], latEH[i], lonEH[j], latEH[j])
+#       if distance_matrix_EH[i,j] > T:
+#           distance_matrix_EH[i,j] = T
 lon = np.concatenate((lonWH,lonEH))
 lat = np.concatenate((latWH,latEH))
 distance_matrix = np.zeros(shape=(len(lon),len(lon)))
@@ -115,7 +129,7 @@ residentsObs_EH = PresAbs_res_EH.sum(axis=1) + perm_EH_NH.sum(axis=1) + perm_EH_
 prop_migr_obs_EH = (breeding_EH + nonbreeding_EH) / (breeding_EH + nonbreeding_EH + residentsObs_EH)
 diff_obs_EH = breeding_EH - nonbreeding_EH
 
-
+ 
 #Import simulated ranges (400 ranges randomly placed across the eastern Hemisphere and 600 ranges randomly placed across the western Hemisphere)
 rsimulWH = np.loadtxt('simulatedRangesWH2.csv', delimiter=',')
 rsimulEH = np.loadtxt('simulatedRangesEH2.csv', delimiter=',')
@@ -123,11 +137,13 @@ rsimulEH = np.loadtxt('simulatedRangesEH2.csv', delimiter=',')
 
 
 #Parameters
-mm = float(argv[1]) #related to the cost of migration
-rr = float(argv[2]) #related to the cost of reproduction
-tt = float(argv[3]) #related to the cost of thermoregulation
-ee = float(argv[4]) #to scale the energy supply from NDVI data
+mm = float(argv[1]) #3.69E-05 #6.86E-05 #float(argv[1]) #0.0000645 #related to the cost of migration
+rr = float(argv[2]) #0.810904615 #0.409030967 #float(argv[2]) #0.195 #related to the cost of reproduction
+tt = float(argv[3]) #24.57998175 #23.56825437 #float(argv[3]) #13.4 #related to the cost of thermoregulation
+ee = float(argv[4]) #76.01626261 #99.40440512 #float(argv[4]) #81.36 #to scale the energy supply from NDVI data
 
+#output_data_file = open(os.path.join("MechaResults"+str(mm)+"_"+str(rr)+"_"+str(tt)+"_"+str(ee)+".csv"),'w')
+#f = open(argv[5], 'w')
 
 #Energy supply
 energySupply_NS_WH = NDVI_NS_WH * ee
@@ -168,6 +184,8 @@ ranges_selected_BR_WH = np.zeros(shape=len(lonWH))
 ranges_selected_NB_WH = np.zeros(shape=len(lonWH))
 energyAvailable_NS_WH = copy.copy(energySupply_NS_WH)  #energy available as a function of energy supply and energy used by previously simulated species
 energyAvailable_NW_WH = copy.copy(energySupply_NW_WH)
+#rangesLatWH = np.zeros(shape=(10000, 2))  #to track the latitude of the selected ranges' centroid
+#breedingSeasonWH = np.zeros(shape=10000)  #to track the breeding season selected
 
 #Run the model
 k=0
@@ -206,6 +224,7 @@ while (sum(energyAvailable_NS_WH) > (sum(energySupply_NS_WH) * 0.05)) & (sum(ene
           rangeNB = best_link1[1]          
       energyUsed_NW_WH[map(int,rsimulWH[:,rangeNB]-1)] = energyUsed_NW_WH[map(int,rsimulWH[:,rangeNB]-1)] + migration_thermo_cost_brNS_NW[rangeBR, rangeNB]
       energyUsed_NS_WH[map(int,rsimulWH[:,rangeBR]-1)] = energyUsed_NS_WH[map(int,rsimulWH[:,rangeBR]-1)] + migration_thermo_cost_brNS_NS[rangeBR, rangeNB]      
+      #breedingSeasonWH[k] = 0
   else:
       if len(best_link2[1]) > 1:
           sel = random.sample(range(0,len(best_link2[1])), 1)
@@ -216,6 +235,7 @@ while (sum(energyAvailable_NS_WH) > (sum(energySupply_NS_WH) * 0.05)) & (sum(ene
          rangeNB = best_link2[0]
       energyUsed_NW_WH[map(int,rsimulWH[:,rangeBR]-1)] = energyUsed_NW_WH[map(int,rsimulWH[:,rangeBR]-1)] + migration_thermo_cost_brNW_NW[rangeNB, rangeBR]
       energyUsed_NS_WH[map(int,rsimulWH[:,rangeNB]-1)] = energyUsed_NS_WH[map(int,rsimulWH[:,rangeNB]-1)] + migration_thermo_cost_brNW_NS[rangeNB, rangeBR]
+      #breedingSeasonWH[k] = 1
   energyAvailable_NS_WH = energySupply_NS_WH - energyUsed_NS_WH
   energyAvailable_NW_WH = energySupply_NW_WH - energyUsed_NW_WH
   for i in range(0,len(energyAvailable_NS_WH)):
@@ -224,6 +244,8 @@ while (sum(energyAvailable_NS_WH) > (sum(energySupply_NS_WH) * 0.05)) & (sum(ene
       if energyAvailable_NW_WH[i] < 0:
           energyAvailable_NW_WH[i] = 0
 
+  #rangesLatWH[k,0] = np.mean(latWH[map(int, rsimulWH[:,rangeBR]-1)])
+  #rangesLatWH[k,1] = np.mean(latWH[map(int, rsimulWH[:,rangeNB]-1)])
 
   #Update the newly occupied hexagons
   ra = np.zeros(shape=len(lonWH))
@@ -235,6 +257,8 @@ while (sum(energyAvailable_NS_WH) > (sum(energySupply_NS_WH) * 0.05)) & (sum(ene
 
   k=k+1
 
+#rangesLatWH = rangesLatWH[0:k,:]
+#breedingSeasonWH = breedingSeasonWH[0:k]
 
 
 #Compute the simulated spatial patterns
@@ -266,6 +290,17 @@ for i in range(0,len(ranges_selected_BR_WH[:,0])):
     richnessResidentsimuWH[i] = sum(residents[i,:])
 richnessDiffSimuWH = richnessBRsimuWH - richnessNBsimuWH
 PropMigrSimuWH = (richnessMigraBRsimuWH + richnessMigraNBsimuWH) / (richnessMigraBRsimuWH + richnessMigraNBsimuWH + richnessResidentsimuWH)
+
+#BRpop_WH = np.zeros(shape=len(ranges_selected_NB_WH[0,:]))
+#NBpop_WH = np.zeros(shape=len(ranges_selected_NB_WH[0,:]))
+#respop_WH = np.zeros(shape=len(ranges_selected_NB_WH[0,:]))
+#for i in range(0,len(ranges_selected_BR_WH[0,:])):
+#    BRpop_WH[i] = sum(migraBR[:,i])
+#    NBpop_WH[i] = sum(migraNB[:,i])
+#    respop_WH[i] = 180 - BRpop_WH[i]
+#BRpops_WH = sum(BRpop_WH)
+#NBpops_WH = sum(NBpop_WH)
+#respops_WH = sum(respop_WH)
 
 
 
@@ -302,6 +337,8 @@ ranges_selected_BR_EH = np.zeros(shape=len(lonEH))
 ranges_selected_NB_EH = np.zeros(shape=len(lonEH))
 energyAvailable_NS_EH = copy.copy(energySupply_NS_EH)  #energy available as a function of energy supply and energy used by previously simulated species
 energyAvailable_NW_EH = copy.copy(energySupply_NW_EH)
+#rangesLatEH = np.zeros(shape=(10000, 2))  #to track the latitude of the selected ranges' centroid
+#breedingSeasonEH = np.zeros(shape=10000)  #to track the breeding season selected
 
 #Run the model
 k=0
@@ -340,6 +377,7 @@ while (sum(energyAvailable_NS_EH) > (sum(energySupply_NS_EH) * 0.05)) & (sum(ene
           rangeNB = best_link1[1]          
       energyUsed_NW_EH[map(int,rsimulEH[:,rangeNB]-1)] = energyUsed_NW_EH[map(int,rsimulEH[:,rangeNB]-1)] + migration_thermo_cost_brNS_NW[rangeBR, rangeNB]
       energyUsed_NS_EH[map(int,rsimulEH[:,rangeBR]-1)] = energyUsed_NS_EH[map(int,rsimulEH[:,rangeBR]-1)] + migration_thermo_cost_brNS_NS[rangeBR, rangeNB]      
+      #breedingSeasonEH[k] = 0
   else:
       if len(best_link2[1]) > 1:
           sel = random.sample(range(0,len(best_link2[1])), 1)
@@ -350,6 +388,7 @@ while (sum(energyAvailable_NS_EH) > (sum(energySupply_NS_EH) * 0.05)) & (sum(ene
          rangeNB = best_link2[0]
       energyUsed_NW_EH[map(int,rsimulEH[:,rangeBR]-1)] = energyUsed_NW_EH[map(int,rsimulEH[:,rangeBR]-1)] + migration_thermo_cost_brNW_NW[rangeNB, rangeBR]
       energyUsed_NS_EH[map(int,rsimulEH[:,rangeNB]-1)] = energyUsed_NS_EH[map(int,rsimulEH[:,rangeNB]-1)] + migration_thermo_cost_brNW_NS[rangeNB, rangeBR]
+      #breedingSeasonWH[k] = 1
   energyAvailable_NS_EH = energySupply_NS_EH - energyUsed_NS_EH
   energyAvailable_NW_EH = energySupply_NW_EH - energyUsed_NW_EH
   for i in range(0,len(energyAvailable_NS_EH)):
@@ -357,7 +396,9 @@ while (sum(energyAvailable_NS_EH) > (sum(energySupply_NS_EH) * 0.05)) & (sum(ene
           energyAvailable_NS_EH[i] = 0
       if energyAvailable_NW_EH[i] < 0:
           energyAvailable_NW_EH[i] = 0
-          
+
+  #rangesLatWH[k,0] = np.mean(latWH[map(int, rsimulWH[:,rangeBR]-1)])
+  #rangesLatWH[k,1] = np.mean(latWH[map(int, rsimulWH[:,rangeNB]-1)])
 
   #Update the newly occupied hexagons
   ra = np.zeros(shape=len(lonEH))
@@ -369,6 +410,8 @@ while (sum(energyAvailable_NS_EH) > (sum(energySupply_NS_EH) * 0.05)) & (sum(ene
 
   k=k+1
 
+#rangesLatWH = rangesLatWH[0:k,:]
+#breedingSeasonWH = breedingSeasonWH[0:k]
 
 
 #Compute the simulated spatial patterns
@@ -401,6 +444,16 @@ for i in range(0,len(ranges_selected_BR_EH[:,0])):
 richnessDiffSimuEH = richnessBRsimuEH - richnessNBsimuEH
 PropMigrSimuEH = (richnessMigraBRsimuEH + richnessMigraNBsimuEH) / (richnessMigraBRsimuEH + richnessMigraNBsimuEH + richnessResidentsimuEH)
 
+#BRpop_EH = np.zeros(shape=len(ranges_selected_NB_EH[0,:]))
+#NBpop_EH = np.zeros(shape=len(ranges_selected_NB_EH[0,:]))
+#respop_EH = np.zeros(shape=len(ranges_selected_NB_EH[0,:]))
+#for i in range(0,len(ranges_selected_BR_EH[0,:])):
+#    BRpop_EH[i] = sum(migraBR[:,i])
+#    NBpop_EH[i] = sum(migraNB[:,i])
+#    respop_EH[i] = 180 - BRpop_EH[i]
+#BRpops_EH = sum(BRpop_EH)
+#NBpops_EH = sum(NBpop_EH)
+#respops_EH = sum(respop_EH)
 
 
 richnessMigraBRsimu = np.concatenate((richnessMigraBRsimuWH, richnessMigraBRsimuEH))
@@ -410,6 +463,7 @@ breedingrichness = np.concatenate((breeding_WH, breeding_EH))
 nonbreedingrichness = np.concatenate((nonbreeding_WH, nonbreeding_EH)) 
 residentsrichness = np.concatenate((residentsObs_WH, residentsObs_EH))
 
+#bestfit_results = np.vstack((richnessMigraBRsimu,richnessMigraNBsimu,richnessResidentsimu,breedingrichness,nonbreedingrichness,residentsrichness)).T
 
 #Compute Earth Mover's Distances
 
@@ -433,40 +487,26 @@ EMD_res2 = EMD_res[0] / flow
 
 EMD_tot = (EMD_BR2 + EMD_NB2 + EMD_res2) / 3
 
+#EMD_BR_WH = emd(richnessMigraBRsimuWH, breeding_WH, distance_matrix_WH) / BRpops_WH
+#EMD_NB_WH = emd(richnessMigraNBsimuWH, nonbreeding_WH, distance_matrix_WH) / NBpops_WH
+#EMD_res_WH = emd(richnessResidentsimuWH, residentsObs_WH, distance_matrix_WH) / respops_WH
+#EMD_BR_EH = emd(richnessMigraBRsimuEH, breeding_EH, distance_matrix_EH) / BRpops_EH
+#EMD_NB_EH = emd(richnessMigraNBsimuEH, nonbreeding_EH, distance_matrix_EH) / NBpops_EH
+#EMD_res_EH = emd(richnessResidentsimuEH, residentsObs_EH, distance_matrix_EH) / respops_EH
+#EMD_tot = pow((EMD_BR_WH * EMD_NB_WH * EMD_res_WH * EMD_BR_EH * EMD_NB_EH * EMD_res_EH), 1.0/6)
+#EMD_tot = EMD_BR_WH + EMD_NB_WH + EMD_res_WH + EMD_BR_EH + EMD_NB_EH + EMD_res_EH
+
+#f.write(str(EMD_tot))
+
+#exit(0)
+
 print EMD_tot
 
 
+#output_data_file.write(str(mm)+","+str(rr)+","+str(tt)+","+str(ee)+","+str(EMD_BR_WH)+","+str(EMD_NB_WH)+","+str(EMD_res_WH)+"\n")
+#output_data_file.close()
 
-
-#Randomized null model
-
-#Energy supply
-energySupply_NS_WH = NDVI_NS_WH * ee
-energySupply_NW_WH = NDVI_NW_WH * ee
-energySupply_NS_EH = NDVI_NS_EH * ee
-energySupply_NW_EH = NDVI_NW_EH * ee
-
-### Run the model in Western Hemisphere ### --- To be repeated for the eastern Hemisphere
-   
-migrationDistance_inKm = np.zeros(shape=(len(rsimulWH[0,:]), len(rsimulWH[0,:])))
-migration_thermo_cost_brNS_NS = 1 + migrationDistance_inKm  
-migration_thermo_cost_brNS_NW = 1 + migrationDistance_inKm 
-migration_thermo_cost_brNW_NS = 1 + migrationDistance_inKm 
-migration_thermo_cost_brNW_NW = 1 + migrationDistance_inKm
-
-k=0
-while k < 3886:
-
-   rangeBR = random.sample(range(0,len(migration_thermo_cost_brNS_NS)),1) 
-   rangeNB = random.sample(range(0,len(migration_thermo_cost_brNS_NS)),1)
-                
-   #Update the newly occupied hexagons
-   ra = np.zeros(shape=len(lonWH))
-   ra[map(int,rsimulWH[:,rangeBR]-1)] = 1
-   ranges_selected_BR_WH = np.column_stack((ranges_selected_BR_WH, ra))
-   ra = np.zeros(shape=len(lonWH))
-   ra[map(int,rsimulWH[:,rangeNB]-1)] = 1
-   ranges_selected_NB_WH = np.column_stack((ranges_selected_NB_WH, ra))
-        
-   k=k+1
-
+#np.savetxt("model_outputs/nomigra_rangesBR_WH.csv", ranges_selected_BR_WH, delimiter=',')
+#np.savetxt("model_outputs/nomigra_rangesNB_WH.csv", ranges_selected_NB_WH, delimiter=',')
+#np.savetxt("model_outputs/nomigra_rangesBR_EH.csv", ranges_selected_BR_EH, delimiter=',')
+#np.savetxt("model_outputs/nomigra_rangesNB_EH.csv", ranges_selected_NB_EH, delimiter=',')
